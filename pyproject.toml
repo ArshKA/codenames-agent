@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "codenames"
+version = "0.1.0"
+description = "Self-supervised model to play the board game \"Codenames\" optimally"
+authors = ["arshkon <arshkon@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torch = "^2.3.1"
+pytorch-lightning = "^2.3.3"
+gensim = "^4.3.3"
+pandas = "^2.2.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
