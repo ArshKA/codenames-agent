@@ -1,0 +1,38 @@
+import torch
+from torch.utils.data import Dataset, DataLoader
+
+from words import load_words
+
+class CodenamesGenerator(Dataset):
+    def __init__(self, start_word_index, end_word_index, board_size):
+        self.start_word_index = start_word_index
+        self.end_word_index = end_word_index
+        self.board_size = board_size
+        self.token_size = board_size+2
+
+    def __len__(self):
+        return self.total_words
+
+    def __getitem__(self, idx):
+        word_tensor = torch.randint(self.start_word_index, self.end_word_index, size=(self.token_size,))
+        n = torch.randint(1, self.token_size // 2 + 1, (1,)).item()
+        class_tensor = torch.zeros(self.token_size, dtype=torch.int)
+        word_tensor[0], word_tensor[1] = 0, 1
+        class_tensor[0], class_tensor[1] = 2, 3
+        indices = torch.randperm(self.token_size - 2) + 2
+        indices = indices[:n]
+        class_tensor[indices] = 1
+        print("retrieved item")
+        return word_tensor, class_tensor
+
+    
+
+def retrieve_data_loader(start_word_index, end_word_index, board_size, batch_size):
+    dataset = CodenamesGenerator(start_word_index, end_word_index, board_size)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    return dataloader
+
+def retrieve_word_lists(noun_path, vocab_path):
+    nouns = load_words(noun_path)
+    vocab = load_words(vocab_path)
+    return nouns, vocab

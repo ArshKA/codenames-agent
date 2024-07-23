@@ -1,0 +1,5 @@
+
+def load_words(path):
+    with open(path, 'r') as f:
+        words = f.read().splitlines()
+    return words
