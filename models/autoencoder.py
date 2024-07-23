@@ -96,7 +96,7 @@ class TransformerGuesser(pl.LightningModule):
             nn.LayerNorm(self.hparams.model_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(self.hparams.dropout),
-            nn.Linear(self.hparams.model_dim, 2)
+            nn.Linear(self.hparams.model_dim, 1)
         )
 
     def forward(self, clue_weights, num_weights, words):
@@ -105,7 +105,7 @@ class TransformerGuesser(pl.LightningModule):
         x = self.transformer(x)
         print(x.shape)
         x = self.output_net(x[:, 2:])
-        return x
+        return torch.squeeze(x)
 
     @torch.no_grad()
     def get_attention_maps(self, clue_weights, num_weights, words):

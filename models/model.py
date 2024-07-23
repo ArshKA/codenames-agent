@@ -97,9 +97,9 @@ class CodenamesModel(pl.LightningModule):
         attention_maps_guesser = self.transformer_guesser.get_attention_maps(clue_weights, num_weights, words)
         return attention_maps_clue, attention_maps_guesser
 
-    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
-        lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        self.log('lr', lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+    # def on_train_batch_end(self):
+    #     lr = self.trainer.optimizers[0].param_groups[0]['lr']
+    #     self.log('lr', lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
 
     def on_epoch_end(self):
         self.temperature = cosine_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams.initial_temperature, self.hparams.min_temperature)
