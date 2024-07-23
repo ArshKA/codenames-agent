@@ -68,28 +68,33 @@ class CodenamesModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         words, classes = batch
         output = self(words, classes)
-        loss = self.compute_loss(output, classes)
+        loss = self.compute_loss(output, classes[:, 2:])
+        acc_0, acc_1 = self.compute_accuracy(output, classes[:, 2:])
+        true_correct = self.compute_correct(output, classes[:, 2:])
         self.log('train_loss', loss)
-        print(loss)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        words, classes = batch
-        output = self(words, classes)
-        loss = self.compute_loss(output, classes)
-        self.log('val_loss', loss)
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        words, classes = batch
-        output = self(words, classes)
-        loss = self.compute_loss(output, classes)
-        self.log('test_loss', loss)
+        self.log('wrong_acc', acc_0)
+        self.log('correct_acc', acc_1)
+        self.log('true_correct', true_correct)
         return loss
 
     def compute_loss(self, output, classes):
-        classes = classes[:, 2:].float()
-        return binary_cross_entropy_with_logits(output, classes)
+        return binary_cross_entropy_with_logits(output, classes.float())
+
+    def compute_accuracy(self, output, classes):
+        probs = F.sigmoid(output)
+        predictions = (probs > 0.5)  # Thresholding to get binary predictions
+        correct_pred_class_1 = (predictions == classes) * (classes == 1)
+        correct_pred_class_0 = (predictions == classes) * (classes == 0)
+        accuracy_class_1 = correct_pred_class_1.sum() / (classes == 1).sum()
+        accuracy_class_0 = correct_pred_class_0.sum() / (classes == 0).sum()
+        return accuracy_class_0.item(), accuracy_class_1.item()
+
+    def compute_correct(self, output, classes):
+        probs = F.sigmoid(output)
+        predictions = (probs > 0.5)  # Thresholding to get binary predictions
+        true_correct = ((predictions == 1) & (classes == 1)).sum()/output.shape[0]
+        return true_correct.item()
+
 
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
