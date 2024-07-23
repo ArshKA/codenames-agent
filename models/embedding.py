@@ -52,7 +52,7 @@ class DecoderEmbedding(nn.Module):
         return embedding_matrix
 
     def forward(self, clue_weights, num_weights, words):
-        out = torch.zeros(*words.shape, self.embedding_dim)
+        out = torch.zeros(*words.shape, self.embedding_dim, device=words.device)
         out[:, 0] = torch.mm(clue_weights, self.vocab_embedding.weight) + self.special_embeddings.weight[0]
         out[:, 1] = torch.mm(num_weights, self.num_embedding.weight) + self.special_embeddings.weight[1]
         out[:, 2:] = self.vocab_embedding(words[:, 2:])
