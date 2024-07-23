@@ -31,8 +31,3 @@ def retrieve_data_loader(start_word_index, end_word_index, board_size, batch_siz
     dataset = CodenamesGenerator(start_word_index, end_word_index, board_size)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataloader
-
-def retrieve_word_lists(noun_path, vocab_path):
-    nouns = load_words(noun_path)
-    vocab = load_words(vocab_path)
-    return nouns, vocab
