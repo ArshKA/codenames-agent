@@ -23,7 +23,6 @@ class CodenamesGenerator(Dataset):
         indices = torch.randperm(self.token_size - 2, device=self.device) + 2
         indices = indices[:n]
         class_tensor[indices] = 1
-        print("retrieved item")
         return word_tensor, class_tensor
 
     
