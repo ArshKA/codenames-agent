@@ -5,9 +5,10 @@ import torch.optim as optim
 import pytorch_lightning as pl
 from torch.nn.functional import gumbel_softmax, binary_cross_entropy_with_logits
 
-from autoencoder import TransformerClue, TransformerGuesser
+from models.autoencoder import TransformerClue, TransformerGuesser
+from models.schedulers import CosineWarmupScheduler, cosine_scheduler
 
-class CombinedTransformer(pl.LightningModule):
+class CodenamesModel(pl.LightningModule):
     def __init__(self, noun_list, vocab_list, word2vec_model, model_dim, max_guess_count, num_heads, num_layers, lr, warmup_epochs, max_epochs, initial_temperature, dropout=0.0, input_dropout=0.0, min_temperature=0.1):
         super().__init__()
         self.hparams['vocab_size'] = len(vocab_list)
@@ -101,4 +102,4 @@ class CombinedTransformer(pl.LightningModule):
         self.log('lr', lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
 
     def on_epoch_end(self):
-        self.temperature = cosine_temperature_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams.initial_temperature, self.hparams.min_temperature)
+        self.temperature = cosine_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams.initial_temperature, self.hparams.min_temperature)

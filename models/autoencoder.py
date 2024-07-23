@@ -4,8 +4,8 @@ import torch.optim as optim
 import pytorch_lightning as pl
 from torch.nn.functional import gumbel_softmax
 
-from embedding import EncoderEmbedding, DecoderEmbedding
-from transformer import TransformerEncoder
+from models.embedding import EncoderEmbedding, DecoderEmbedding
+from models.transformer import TransformerEncoder
 
 
 class TransformerClue(pl.LightningModule):
