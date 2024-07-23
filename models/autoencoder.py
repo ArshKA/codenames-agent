@@ -103,7 +103,6 @@ class TransformerGuesser(pl.LightningModule):
         x = self.embedding_model(clue_weights, num_weights, words)
         x = self.input_net(x)
         x = self.transformer(x)
-        print(x.shape)
         x = self.output_net(x[:, 2:])
         return torch.squeeze(x)
 
