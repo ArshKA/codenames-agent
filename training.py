@@ -1,21 +1,28 @@
 from data_utils.words import retrieve_word_lists, load_word2vec_model
 from data_utils.dataloader import retrieve_data_loader
 from models.model import CodenamesModel 
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import LearningRateMonitor
+import lightning.pytorch as pl
+from lightning.pytorch import Trainer, seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import LearningRateMonitor
+from lightning.pytorch.loggers import WandbLogger
 
 def main():
     seed_everything(42)
+
+
+    wandb_logger = WandbLogger(project="Codenames")
+    wandb_logger.watch(model, log="all")
+
+
     noun_path = 'words/filtered_nouns.txt'
     vocab_path = 'words/filtered_vocab.txt'
     word2vec_model = load_word2vec_model('glove-wiki-gigaword-100')
     nouns, vocab = retrieve_word_lists(noun_path, vocab_path)
 
     board_size = 25
-    max_guesses = 10
+    max_guesses = 25
     model_dim = 128
     num_heads = 8
     num_layers = 6
@@ -43,6 +50,18 @@ def main():
         input_dropout=input_dropout,
         min_temperature=min_temperature
     )
+
+    dataloader = retrieve_data_loader(start_word_index=0, end_word_index=len(nouns), board_size=board_size, max_guesses=max_guesses, batch_size=32, device='cpu')
+
+
+    # for words, classes in dataloader:
+    #     print(words.shape)
+    #     print(classes.shape)
+    #     out = model.training_step((words, classes), 1)
+    #     print(out.shape)
+    #     break
+
+    
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath='checkpoints',
@@ -51,17 +70,15 @@ def main():
         mode='min'
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    logger = TensorBoardLogger('logs', name='codenames')
 
     trainer = pl.Trainer(
         max_epochs=max_epochs,
-        logger=logger,
+        logger=wandb_logger,
         callbacks=[checkpoint_callback, lr_monitor],
         log_every_n_steps=1,
-        accelerator="gpu",
-        devices=[3]
+        # accelerator="cpu",
+        # devices=[0]
     )
-    dataloader = retrieve_data_loader(start_word_index=0, end_word_index=len(nouns), board_size=25, max_guesses=max_guesses, batch_size=32, device='cuda:3')
     trainer.fit(model, dataloader)
 
 

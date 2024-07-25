@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch.nn.functional import gumbel_softmax
 
 from models.embedding import EncoderEmbedding, DecoderEmbedding

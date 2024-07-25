@@ -2,8 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch.nn.functional import gumbel_softmax, binary_cross_entropy_with_logits
+import wandb
+import plotly.graph_objects as go
+
 
 from models.autoencoder import TransformerClue, TransformerGuesser
 from models.schedulers import CosineWarmupScheduler, cosine_scheduler
@@ -47,11 +50,15 @@ class CodenamesModel(pl.LightningModule):
         )
         self.temperature = initial_temperature
 
+
     def forward(self, words, classes):
         word_logits, num_logits = self.transformer_clue(words, classes)
         clue_weights = gumbel_softmax(word_logits, tau=self.temperature, dim=-1)
         num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
+        if self.trainer.is_last_batch():
+            self.log_heatmap()
+
         return output
 
     def configure_optimizers(self):
@@ -69,33 +76,52 @@ class CodenamesModel(pl.LightningModule):
         words, classes = batch
         output = self(words, classes)
         loss = self.compute_loss(output, classes[:, 2:])
-        acc_0, acc_1 = self.compute_accuracy(output, classes[:, 2:])
-        true_correct = self.compute_correct(output, classes[:, 2:])
-        self.log('train_loss', loss)
-        self.log('wrong_acc', acc_0)
-        self.log('correct_acc', acc_1)
-        self.log('true_correct', true_correct)
         return loss
-
+    
     def compute_loss(self, output, classes):
         return binary_cross_entropy_with_logits(output, classes.float())
 
-    def compute_accuracy(self, output, classes):
+    def compute_metrics(self, output, classes):
         probs = F.sigmoid(output)
-        predictions = (probs > 0.5)  # Thresholding to get binary predictions
-        correct_pred_class_1 = (predictions == classes) * (classes == 1)
-        correct_pred_class_0 = (predictions == classes) * (classes == 0)
-        accuracy_class_1 = correct_pred_class_1.sum() / (classes == 1).sum()
-        accuracy_class_0 = correct_pred_class_0.sum() / (classes == 0).sum()
-        return accuracy_class_0.item(), accuracy_class_1.item()
+        predictions = (probs > 0.5) 
+        correct = (predictions == classes)
+        true_positive = correct * (classes == 1)
+        true_negative = correct * (classes == 0)
+        accuracy_tp = true_positive.sum() / (classes == 1).sum()
+        accuracy_tn = true_negative.sum() / (classes == 0).sum()
+        correct_count = (correct*(classes == 1)) / output.shape[0]
+        return accuracy_tp.item(), accuracy_tn.item(), correct_count.item()
 
-    def compute_correct(self, output, classes):
-        probs = F.sigmoid(output)
-        predictions = (probs > 0.5)  # Thresholding to get binary predictions
-        true_correct = ((predictions == 1) & (classes == 1)).sum()/output.shape[0]
-        return true_correct.item()
+    def log_metrics(self, predicted, true):
+        loss = self.compute_loss(predicted, true).item()
+        accuracy_tn, accuracy_tp, correct_count = self.compute_metrics(predicted, true)
+        self.log('train_loss', loss)
+        self.log('wrong_acc', accuracy_tn)
+        self.log('correct_acc', accuracy_tp)
+        self.log('correct_count', correct_count)
 
+    def log_heatmap(self, values):
+        if values.is_cuda:
+            values = values.cpu()
 
+        values = values.detach().numpy()
+
+        fig = go.Figure(data=go.Heatmap(
+            z=values,
+            x=[f"Feature {i+1}" for i in range(values.shape[1])],  # Naming the features on x-axis
+            y=[f"Batch {i+1}" for i in range(values.shape[0])],    # Naming batches on y-axis
+            colorscale='Viridis'
+        ))
+
+        fig.update_layout(
+            title=f"Heatmap for Batch ID {self.current_epoch}",
+            xaxis_title="Features",
+            yaxis_title="Batch Instances",
+            xaxis_nticks=values.shape[1],
+            yaxis_nticks=values.shape[0]
+        )
+
+        wandb.log({f"heatmap_batch_{self.current_epoch}": wandb.Plotly(fig)})        
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
         attention_maps_clue = self.transformer_clue.get_attention_maps(words)
@@ -105,6 +131,14 @@ class CodenamesModel(pl.LightningModule):
     # def on_train_batch_end(self):
     #     lr = self.trainer.optimizers[0].param_groups[0]['lr']
     #     self.log('lr', lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+    def log_hp(self):
+        self.log('temperature', self.temperature)
 
-    def on_epoch_end(self):
+    def update_hp(self):
         self.temperature = cosine_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams.initial_temperature, self.hparams.min_temperature)
+
+    def on_train_epoch_end(self):
+        self.update_hp()
+        self.log_hp()
+
+
