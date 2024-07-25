@@ -101,7 +101,7 @@ class CodenamesModel(pl.LightningModule):
         self.log('correct_acc', accuracy_tp)
         self.log('correct_count', correct_count)
 
-    def log_heatmap(self, values):
+    def log_heatmap(self, values, name='heatmap'):
         if values.is_cuda:
             values = values.cpu()
 
@@ -122,7 +122,7 @@ class CodenamesModel(pl.LightningModule):
             yaxis_nticks=values.shape[0]
         )
 
-        wandb.log({f"heatmap_batch_{self.current_epoch}": wandb.Plotly(fig)})        
+        wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})        
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
         attention_maps_clue = self.transformer_clue.get_attention_maps(words)
