@@ -57,7 +57,8 @@ class CodenamesModel(pl.LightningModule):
         num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
         if self.trainer.is_last_batch():
-            self.log_heatmap()
+            self.log_heatmap(clue_weights, "Class Weights")
+            self.log_heatmap(num_weights, "Num Weights")
 
         return output
 
