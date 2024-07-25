@@ -77,6 +77,7 @@ class CodenamesModel(pl.LightningModule):
         words, classes = batch
         output = self(words, classes)
         loss = self.compute_loss(output, classes[:, 2:])
+        self.log_metrics(output, classes[:, 2:])
         return loss
     
     def compute_loss(self, output, classes):
