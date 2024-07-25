@@ -1,5 +1,6 @@
-/models/__pycache__/
-/data_utils/__pycache__/
+__pycache__/
 /.ruff_cache/
 /checkpoints/
 /logs/
+/wandb/
+/lightning_logs/
