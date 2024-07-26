@@ -102,7 +102,7 @@ class CodenamesModel(pl.LightningModule):
         self.log('correct_acc', accuracy_tp)
         self.log('correct_count', correct_count)
 
-    def log_heatmap(self, values, name='heatmap'):
+    def log_heatmap(self, values, labels=None, name='heatmap'):
         if values.is_cuda:
             values = values.cpu()
 
@@ -112,6 +112,7 @@ class CodenamesModel(pl.LightningModule):
             z=values,
             x=[f"Feature {i+1}" for i in range(values.shape[1])],  # Naming the features on x-axis
             y=[f"Batch {i+1}" for i in range(values.shape[0])],    # Naming batches on y-axis
+            hoverinfo='x+y+z',  # Showing labels and value on hover
             colorscale='Viridis'
         ))
 
@@ -119,11 +120,12 @@ class CodenamesModel(pl.LightningModule):
             title=f"Heatmap for Batch ID {self.current_epoch}",
             xaxis_title="Features",
             yaxis_title="Batch Instances",
-            xaxis_nticks=values.shape[1],
-            yaxis_nticks=values.shape[0]
+            xaxis={'tickvals': [], 'title': 'Features'},  # No tick labels, but keeps axis title
+            yaxis={'tickvals': [], 'title': 'Batch Instances'}  # No tick labels, but keeps axis title
         )
 
-        wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})        
+        wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})
+         
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
         attention_maps_clue = self.transformer_clue.get_attention_maps(words)
