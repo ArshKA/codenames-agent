@@ -57,8 +57,8 @@ class CodenamesModel(pl.LightningModule):
         num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
         if self.trainer.is_last_batch:
-            self.log_heatmap(clue_weights, "Class Weights")
-            self.log_heatmap(num_weights, "Num Weights")
+            self.log_heatmap(clue_weights, "Class Weights", self.hparams.vocab)
+            self.log_heatmap(num_weights, "Num Weights", range(1, self.hparams.max_guess_count+1))
 
         return output
 
@@ -102,16 +102,21 @@ class CodenamesModel(pl.LightningModule):
         self.log('correct_acc', accuracy_tp)
         self.log('correct_count', correct_count)
 
-    def log_heatmap(self, values, labels=None, name='heatmap'):
+
+    def log_heatmap(self, values, name='heatmap', labels=None):
         if values.is_cuda:
             values = values.cpu()
 
         values = values.detach().numpy()
 
+        # Check if labels are provided, otherwise use default feature numbering
+        x_labels = labels if labels is not None else [f"Feature {i+1}" for i in range(values.shape[1])]
+
         fig = go.Figure(data=go.Heatmap(
             z=values,
-            x=[f"Feature {i+1}" for i in range(values.shape[1])],  # Naming the features on x-axis
-            y=[f"Batch {i+1}" for i in range(values.shape[0])],    # Naming batches on y-axis
+            x=x_labels,  # Use custom labels for the x-axis
+            y=[f"Batch {i+1}" for i in range(values.shape[0])],  # Naming batches on y-axis
+            hoverongaps=False,
             hoverinfo='x+y+z',  # Showing labels and value on hover
             colorscale='Viridis'
         ))
@@ -120,11 +125,12 @@ class CodenamesModel(pl.LightningModule):
             title=f"Heatmap for Batch ID {self.current_epoch}",
             xaxis_title="Features",
             yaxis_title="Batch Instances",
-            xaxis={'tickvals': [], 'title': 'Features'},  # No tick labels, but keeps axis title
-            yaxis={'tickvals': [], 'title': 'Batch Instances'}  # No tick labels, but keeps axis title
+            xaxis={'showticklabels': False},  # Hide x-axis labels
+            yaxis={'showticklabels': False}   # Hide y-axis labels
         )
 
         wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})
+
 
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
