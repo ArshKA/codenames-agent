@@ -128,7 +128,7 @@ class CodenamesModel(pl.LightningModule):
             yaxis={'showticklabels': False}   # Hide y-axis labels
         )
 
-        wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})
+        wandb.log({f"{name}_epoch_{self.current_epoch}": wandb.Plotly(fig)})
 
 
     @torch.no_grad()
