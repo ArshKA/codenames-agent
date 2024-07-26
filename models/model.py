@@ -57,15 +57,14 @@ class CodenamesModel(pl.LightningModule):
         num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
         if self.trainer.is_last_batch:
-            self.log_heatmap(clue_weights, "Class Weights", self.hparams.vocab)
-            self.log_heatmap(num_weights, "Num Weights", range(1, self.hparams.max_guess_count+1))
+            self.log_heatmap(clue_weights, "Class Weights", self.hparams.vocab_list)
+            self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams.max_guess_count+1)))
 
         return output
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)
 
-        # Apply lr scheduler per step
         lr_scheduler = CosineWarmupScheduler(optimizer,
                                              warmup=self.hparams.warmup_epochs,
                                              max_epochs=self.hparams.max_epochs,
@@ -91,12 +90,12 @@ class CodenamesModel(pl.LightningModule):
         true_negative = correct * (classes == 0)
         accuracy_tp = true_positive.sum() / (classes == 1).sum()
         accuracy_tn = true_negative.sum() / (classes == 0).sum()
-        correct_count = (correct*(classes == 1)).sum() / output.shape[0]
+        correct_count = (correct & classes == 1).sum() / output.shape[0]
         return accuracy_tp.item(), accuracy_tn.item(), correct_count.item()
 
     def log_metrics(self, predicted, true):
         loss = self.compute_loss(predicted, true).item()
-        accuracy_tn, accuracy_tp, correct_count = self.compute_metrics(predicted, true)
+        accuracy_tp, accuracy_tn, correct_count = self.compute_metrics(predicted, true)
         self.log('train_loss', loss)
         self.log('wrong_acc', accuracy_tn)
         self.log('correct_acc', accuracy_tp)
