@@ -8,7 +8,7 @@ class EncoderEmbedding(nn.Module):
         self.embedding_dim = self.word2vec_model.vector_size
         self.noun_embedding = nn.Embedding.from_pretrained(self._create_embedding_matrix(word_list), freeze=True)
         self.class_embedding = nn.Embedding(4, self.embedding_dim)
-        torch.nn.init.normal_(self.class_embedding.weight, 0, .05)
+        torch.nn.init.normal_(self.class_embedding.weight, 0, .1)
 
 
     def _create_embedding_matrix(self, word_list):
@@ -46,7 +46,7 @@ class DecoderEmbedding(nn.Module):
         for idx, word in enumerate(word_list):
             if word in self.word2vec_model:
                 embedding_matrix[idx] = torch.tensor(self.word2vec_model[word])
-            else:
+            elif word not in ['<CLS>', '<NUM>']:
                 raise Exception(f"Word '{word}' not found in the Word2Vec model.")
 
         return embedding_matrix
@@ -55,5 +55,5 @@ class DecoderEmbedding(nn.Module):
         out = torch.zeros(*words.shape, self.embedding_dim, device=words.device)
         out[:, 0] = torch.mm(clue_weights, self.vocab_embedding.weight) + self.special_embeddings.weight[0]
         out[:, 1] = torch.mm(num_weights, self.num_embedding.weight) + self.special_embeddings.weight[1]
-        out[:, 2:] = self.vocab_embedding(words[:, 2:])
+        out[:, 2:] = self.noun_embedding(words[:, 2:])
         return out

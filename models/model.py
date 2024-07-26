@@ -34,7 +34,7 @@ class CodenamesModel(pl.LightningModule):
         )
 
         self.transformer_guesser = TransformerGuesser(
-            noun_list=noun_list[2:],
+            noun_list=noun_list,
             vocab_list=vocab_list,
             word2vec_model=word2vec_model,
             model_dim=model_dim,
@@ -53,8 +53,10 @@ class CodenamesModel(pl.LightningModule):
 
     def forward(self, words, classes):
         word_logits, num_logits = self.transformer_clue(words, classes)
-        clue_weights = gumbel_softmax(word_logits, tau=self.temperature, dim=-1)
-        num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
+        # clue_weights = gumbel_softmax(word_logits, tau=self.temperature, dim=-1)
+        # num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
+        clue_weights = F.softmax(word_logits, dim=-1)
+        num_weights = F.softmax(num_logits, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
         if self.trainer.is_last_batch:
             self.log_heatmap(clue_weights, "Class Weights", self.hparams.vocab_list)
