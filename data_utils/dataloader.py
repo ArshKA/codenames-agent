@@ -27,7 +27,7 @@ class CodenamesGenerator(Dataset):
 
     
 
-def retrieve_data_loader(start_word_index, end_word_index, board_size, max_guesses, batch_size, device='cpu'):
+def retrieve_data_loader(start_word_index, end_word_index, board_size, max_guesses, batch_size, num_workers=0, device='cpu'):
     dataset = CodenamesGenerator(start_word_index, end_word_index, board_size, max_guesses, device=device)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     return dataloader
