@@ -12,11 +12,11 @@ class CodenamesGenerator(Dataset):
         self.device = device
 
     def __len__(self):
-        return (self.end_word_index - self.start_word_index)*20
+        return 80000
 
     def __getitem__(self, idx):
         word_tensor = torch.randint(self.start_word_index, self.end_word_index, size=(self.token_size,), device=self.device)
-        n = torch.randint(1, self.max_guesses, (1,), device=self.device).item()
+        n = torch.randint(1, self.max_guesses+1, (1,), device=self.device).item()
         class_tensor = torch.zeros(self.token_size, dtype=torch.int, device=self.device)
         word_tensor[0], word_tensor[1] = 0, 1
         class_tensor[0], class_tensor[1] = 2, 3
