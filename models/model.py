@@ -91,7 +91,7 @@ class CodenamesModel(pl.LightningModule):
         true_negative = correct * (classes == 0)
         accuracy_tp = true_positive.sum() / (classes == 1).sum()
         accuracy_tn = true_negative.sum() / (classes == 0).sum()
-        correct_count = (correct*(classes == 1)) / output.shape[0]
+        correct_count = (correct*(classes == 1)).sum() / output.shape[0]
         return accuracy_tp.item(), accuracy_tn.item(), correct_count.item()
 
     def log_metrics(self, predicted, true):
@@ -125,7 +125,7 @@ class CodenamesModel(pl.LightningModule):
         )
 
         wandb.log({f"{name}_batch_{self.current_epoch}": wandb.Plotly(fig)})
-         
+
     @torch.no_grad()
     def get_attention_maps(self, words, classes, clue_weights, num_weights):
         attention_maps_clue = self.transformer_clue.get_attention_maps(words)
