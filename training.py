@@ -7,13 +7,11 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import WandbLogger
+import wandb
 
 def main():
     seed_everything(42)
-
-
-    wandb_logger = WandbLogger(project="Codenames")
-    wandb_logger.watch(model, log="all")
+    wandb.require("core")
 
 
     noun_path = 'words/filtered_nouns.txt'
@@ -29,7 +27,7 @@ def main():
     lr = 1e-4
     warmup_epochs = 20
     max_epochs = 200
-    initial_temperature = 1.0
+    initial_temperature = 100.0
     dropout = 0.1
     input_dropout = 0.1
     min_temperature = 0.1
@@ -70,6 +68,9 @@ def main():
         mode='min'
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
+
+    wandb_logger = WandbLogger(project="Codenames")
+    wandb_logger.watch(model, log="all", log_graph=True, log_freq=20)
 
     trainer = pl.Trainer(
         max_epochs=max_epochs,
