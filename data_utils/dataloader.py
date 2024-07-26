@@ -12,7 +12,7 @@ class CodenamesGenerator(Dataset):
         self.device = device
 
     def __len__(self):
-        return self.end_word_index - self.start_word_index
+        return (self.end_word_index - self.start_word_index)*20
 
     def __getitem__(self, idx):
         word_tensor = torch.randint(self.start_word_index, self.end_word_index, size=(self.token_size,), device=self.device)
