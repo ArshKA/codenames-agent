@@ -12,44 +12,44 @@ from models.autoencoder import TransformerClue, TransformerGuesser
 from models.schedulers import CosineWarmupScheduler, cosine_scheduler
 
 class CodenamesModel(pl.LightningModule):
-    def __init__(self, noun_list, vocab_list, word2vec_model, model_dim, max_guess_count, num_heads, num_layers, lr, warmup_epochs, max_epochs, initial_temperature, dropout=0.0, input_dropout=0.0, min_temperature=0.1):
+    def __init__(self, noun_list, vocab_list, word2vec_model, **hparams):
         super().__init__()
+        self.hparams.update(hparams)
         self.hparams['vocab_size'] = len(vocab_list)
         self.save_hyperparameters()
 
         self.transformer_clue = TransformerClue(
             noun_list=noun_list,
             word2vec_model=word2vec_model,
-            model_dim=model_dim,
+            model_dim=self.hparams['model_dim'],
             vocab_size=len(vocab_list),
-            max_guess_count=max_guess_count,
-            num_heads=num_heads,
-            num_layers=num_layers,
-            lr=lr,
-            warmup=warmup_epochs,
-            initial_temperature=initial_temperature,
-            dropout=dropout,
-            input_dropout=input_dropout,
-            min_temperature=min_temperature
+            max_guess_count=self.hparams['max_guess_count'],
+            num_heads=self.hparams['num_heads'],
+            num_layers=self.hparams['num_layers'],
+            lr=self.hparams['lr'],
+            warmup=self.hparams['warmup_epochs'],
+            initial_temperature=self.hparams['initial_temperature'],
+            dropout=self.hparams['dropout'],
+            input_dropout=self.hparams['input_dropout'],
+            min_temperature=self.hparams['min_temperature']
         )
 
         self.transformer_guesser = TransformerGuesser(
             noun_list=noun_list,
             vocab_list=vocab_list,
             word2vec_model=word2vec_model,
-            model_dim=model_dim,
-            max_guess_count=max_guess_count,
-            num_heads=num_heads,
-            num_layers=num_layers,
-            lr=lr,
-            warmup=warmup_epochs,
-            initial_temperature=initial_temperature,
-            dropout=dropout,
-            input_dropout=input_dropout,
-            min_temperature=min_temperature
+            model_dim=self.hparams['model_dim'],
+            max_guess_count=self.hparams['max_guess_count'],
+            num_heads=self.hparams['num_heads'],
+            num_layers=self.hparams['num_layers'],
+            lr=self.hparams['lr'],
+            warmup=self.hparams['warmup_epochs'],
+            initial_temperature=self.hparams['initial_temperature'],
+            dropout=self.hparams['dropout'],
+            input_dropout=self.hparams['input_dropout'],
+            min_temperature=self.hparams['min_temperature']
         )
-        self.temperature = initial_temperature
-
+        self.temperature = self.hparams['initial_temperature']
 
     def forward(self, words, classes):
         word_logits, num_logits = self.transformer_clue(words, classes)
@@ -59,17 +59,17 @@ class CodenamesModel(pl.LightningModule):
         num_weights = F.softmax(num_logits, dim=-1)
         output = self.transformer_guesser(clue_weights, num_weights, words)
         if self.trainer.is_last_batch:
-            self.log_heatmap(clue_weights, "Class Weights", self.hparams.vocab_list)
-            self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams.max_guess_count+1)))
+            self.log_heatmap(clue_weights, "Class Weights", self.hparams['vocab_list'])
+            self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams['max_guess_count'] + 1)))
 
         return output
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.hparams['lr'])
 
         lr_scheduler = CosineWarmupScheduler(optimizer,
-                                             warmup=self.hparams.warmup_epochs,
-                                             max_epochs=self.hparams.max_epochs,
+                                             warmup=self.hparams['warmup_epochs'],
+                                             max_epochs=self.hparams['max_epochs'],
                                              initial_value=.01,
                                              min_value=.003)
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
@@ -102,7 +102,6 @@ class CodenamesModel(pl.LightningModule):
         self.log('wrong_acc', accuracy_tn)
         self.log('correct_acc', accuracy_tp)
         self.log('correct_count', correct_count)
-
 
     def log_heatmap(self, values, name='heatmap', labels=None):
         if values.is_cuda:
@@ -146,11 +145,8 @@ class CodenamesModel(pl.LightningModule):
         self.log('temperature', self.temperature)
 
     def update_hp(self):
-        self.temperature = cosine_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams.initial_temperature, self.hparams.min_temperature)
+        self.temperature = cosine_scheduler(self.current_epoch, self.trainer.max_epochs, self.hparams['initial_temperature'], self.hparams['min_temperature'])
 
     def on_train_epoch_end(self):
         self.update_hp()
         self.log_hp()
-        
-
-

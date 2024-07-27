@@ -1,0 +1,11 @@
+model_dim: 128
+max_guess_count: 1
+num_heads: 8
+num_layers: 8
+lr: 0.0001
+warmup_epochs: 20
+max_epochs: 200
+initial_temperature: 100.0
+dropout: 0.0
+input_dropout: 0.0
+min_temperature: 0.1
