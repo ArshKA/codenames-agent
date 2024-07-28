@@ -52,15 +52,16 @@ class CodenamesModel(pl.LightningModule):
         self.temperature = self.hparams['initial_temperature']
 
     def forward(self, words, classes):
-        word_logits, num_logits = self.transformer_clue(words, classes)
+        word_logits = self.transformer_clue(words, classes)
         # clue_weights = gumbel_softmax(word_logits, tau=self.temperature, dim=-1)
         # num_weights = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
-        clue_weights = F.softmax(word_logits, dim=-1)
-        num_weights = F.softmax(num_logits, dim=-1)
-        output = self.transformer_guesser(clue_weights, num_weights, words)
+        # clue_weights = F.softmax(word_logits, dim=-1)
+        # num_weights = F.softmax(num_logits, dim=-1)
+        clue_weights = word_logits
+        output = self.transformer_guesser(clue_weights, words)
         if self.trainer.is_last_batch:
             self.log_heatmap(clue_weights, "Class Weights", self.hparams['vocab_list'])
-            self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams['max_guess_count'] + 1)))
+            # self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams['max_guess_count'] + 1)))
 
         return output
 
@@ -77,8 +78,8 @@ class CodenamesModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         words, classes = batch
         output = self(words, classes)
-        loss = self.compute_loss(output, classes[:, 2:])
-        self.log_metrics(output, classes[:, 2:])
+        loss = self.compute_loss(output, classes)
+        self.log_metrics(output, classes)
         return loss
     
     def compute_loss(self, output, classes):

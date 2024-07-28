@@ -17,7 +17,6 @@ class TransformerClue(pl.LightningModule):
 
         self._initialize_embeddings(noun_list, word2vec_model)
         self._create_model()
-        self.temperature = initial_temperature
 
     def _initialize_embeddings(self, noun_list, word2vec_model):
         self.embedding_model = EncoderEmbedding(noun_list, word2vec_model)
@@ -35,16 +34,9 @@ class TransformerClue(pl.LightningModule):
         self.vocab_out = nn.Sequential(
             nn.Linear(self.hparams.model_dim, self.hparams.model_dim),
             nn.LayerNorm(self.hparams.model_dim),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
             nn.Dropout(self.hparams.dropout),
-            nn.Linear(self.hparams.model_dim, self.hparams.vocab_size)
-        )
-        self.num_out = nn.Sequential(
-            nn.Linear(self.hparams.model_dim, self.hparams.model_dim),
-            nn.LayerNorm(self.hparams.model_dim),
-            nn.ReLU(inplace=True),
-            nn.Dropout(self.hparams.dropout),
-            nn.Linear(self.hparams.model_dim, self.hparams.max_guess_count)
+            nn.Linear(self.hparams.model_dim, self.hparams.embedding_dim)
         )
 
     def forward(self, words, classes):
@@ -52,10 +44,7 @@ class TransformerClue(pl.LightningModule):
         x = self.input_net(x)
         x = self.transformer(x)
         word_logits = self.vocab_out(x[:, 0])
-        num_logits = self.num_out(x[:, 1])
-        word_logits = gumbel_softmax(word_logits, tau=self.temperature, dim=-1)
-        num_logits = gumbel_softmax(num_logits, tau=self.temperature, dim=-1)
-        return word_logits, num_logits
+        return word_logits
 
     @torch.no_grad()
     def get_attention_maps(self, x):
@@ -94,21 +83,21 @@ class TransformerGuesser(pl.LightningModule):
         self.output_net = nn.Sequential(
             nn.Linear(self.hparams.model_dim, self.hparams.model_dim),
             nn.LayerNorm(self.hparams.model_dim),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
             nn.Dropout(self.hparams.dropout),
             nn.Linear(self.hparams.model_dim, 1)
         )
 
-    def forward(self, clue_weights, num_weights, words):
-        x = self.embedding_model(clue_weights, num_weights, words)
+    def forward(self, clue_weights, words):
+        x = self.embedding_model(clue_weights, words)
         x = self.input_net(x)
         x = self.transformer(x)
-        x = self.output_net(x[:, 2:])
+        x = self.output_net(x[:, 1:])
         return torch.squeeze(x)
 
     @torch.no_grad()
-    def get_attention_maps(self, clue_weights, num_weights, words):
-        x = self.embedding_model(clue_weights, num_weights, words)
+    def get_attention_maps(self, clue_weights, words):
+        x = self.embedding_model(clue_weights, words)
         x = self.input_net(x)
         attention_maps = self.transformer.get_attention_maps(x)
         return attention_maps

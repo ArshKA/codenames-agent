@@ -76,7 +76,7 @@ class EncoderBlock(nn.Module):
         self.linear_net = nn.Sequential(
             nn.Linear(input_dim, dim_feedforward),
             nn.Dropout(dropout),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
             nn.Linear(dim_feedforward, input_dim)
         )
 
