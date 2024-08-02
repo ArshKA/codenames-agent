@@ -16,7 +16,7 @@ from helpers import retrieve_hparams
 CONFIG_PATH = 'hyperparameters.yaml'
 
 def main():
-    seed_everything(42)
+    # seed_everything(42)
 
     wandb.require("core")
 
@@ -25,7 +25,7 @@ def main():
     word2vec_model = load_word2vec_model('glove-wiki-gigaword-100')
     nouns, vocab = retrieve_word_lists(noun_path, vocab_path)
     nouns = nouns[:100]
-    vocab = nouns[2:]
+    vocab = nouns[:99] + ['test...']
 
     hparams = retrieve_hparams(CONFIG_PATH)
 
@@ -41,8 +41,8 @@ def main():
         end_word_index=len(nouns),
         board_size=25,  # Keeping the board_size as it was not part of the hparams
         max_guesses=hparams['max_guess_count'],
-        batch_size=32,
-        num_workers=2,
+        batch_size=256,
+        num_workers=5,
         device='cpu'
     )
 
@@ -60,7 +60,7 @@ def main():
 
     # Initialize WandbLogger
     wandb_logger = WandbLogger(project="Codenames")
-    wandb_logger.watch(model, log="all", log_graph=True, log_freq=5000)
+    wandb_logger.watch(model, log="all", log_graph=True, log_freq=2500)
 
     # Initialize the PyTorch Lightning trainer
     trainer = pl.Trainer(
@@ -68,8 +68,8 @@ def main():
         logger=wandb_logger,
         callbacks=[checkpoint_callback, lr_monitor],
         log_every_n_steps=100,
-        accelerator="cpu",
-        # devices=[3]
+        accelerator="gpu",
+        devices=[2]
     )
 
     # Train the model

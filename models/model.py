@@ -6,6 +6,7 @@ import lightning.pytorch as pl
 from torch.nn.functional import gumbel_softmax, binary_cross_entropy_with_logits
 import wandb
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 from models.autoencoder import TransformerClue, TransformerGuesser
@@ -61,6 +62,7 @@ class CodenamesModel(pl.LightningModule):
         output = self.transformer_guesser(clue_weights, words)
         if self.trainer.is_last_batch:
             self.log_heatmap(clue_weights, "Class Weights", self.hparams['vocab_list'])
+            self.log_true_vs_predicted_heatmap(classes, F.sigmoid(output), "True vs Predicted")
             # self.log_heatmap(num_weights, "Num Weights", list(range(1, self.hparams['max_guess_count'] + 1)))
 
         return output
@@ -128,6 +130,48 @@ class CodenamesModel(pl.LightningModule):
             yaxis_title="Batch Instances",
             xaxis={'showticklabels': False},  # Hide x-axis labels
             yaxis={'showticklabels': False}   # Hide y-axis labels
+        )
+
+        wandb.log({f"{name}_epoch_{self.current_epoch}": wandb.Plotly(fig)})
+
+    def log_true_vs_predicted_heatmap(self, true_values, predicted_values, name='True vs Predicted Heatmap', labels=None):
+        if true_values.is_cuda:
+            true_values = true_values.cpu()
+        if predicted_values.is_cuda:
+            predicted_values = predicted_values.cpu()
+
+        true_values = true_values.detach().numpy()
+        predicted_values = predicted_values.detach().numpy()
+
+        x_labels = labels if labels is not None else [f"Feature {i+1}" for i in range(true_values.shape[1])]
+
+        fig = make_subplots(rows=1, cols=2, subplot_titles=("True Values", "Predicted Values"))
+
+        fig.add_trace(go.Heatmap(
+            z=true_values,
+            x=x_labels,
+            y=[f"Instance {i+1}" for i in range(true_values.shape[0])],
+            colorscale='Viridis',
+            zmin=0, zmax=1,
+            showscale=False,
+            hoverinfo='x+y+z'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Heatmap(
+            z=predicted_values,
+            x=x_labels,
+            y=[f"Instance {i+1}" for i in range(predicted_values.shape[0])],
+            colorscale='Viridis',
+            zmin=0, zmax=1,
+            hoverinfo='x+y+z'
+        ), row=1, col=2)
+
+        fig.update_layout(
+            title=name,
+            xaxis_title="Features",
+            yaxis_title="Instances",
+            xaxis={'showticklabels': False},
+            yaxis={'showticklabels': False}
         )
 
         wandb.log({f"{name}_epoch_{self.current_epoch}": wandb.Plotly(fig)})
